@@ -10,6 +10,41 @@ const app = new Hono<{
   };
 }>();
 
+app.use("/api/v1/blog/*", async (c, next) => {
+  try {
+    // Get and verify the header info
+    const header = c.req.header("authorization") || undefined;
+
+    if (!header) {
+      c.status(403);
+      return c.json({
+        error: "No request header found for auth",
+      });
+    }
+
+    const response = await verify(header, c.env.JWT_SECRET);
+    if (response.id) {
+      // since we signed the token with "id"
+      console.log(response.id);
+      await next();
+    } else {
+      c.status(403);
+      return c.json({
+        error: "unauthorized",
+      });
+    }
+
+    // If header info correct, call next handler
+    // If not, return a 403
+  } catch (e) {
+    console.log("Error in the auth MW", e);
+    c.status(500);
+    return c.json({
+      error: "Error in the Auth MW",
+    });
+  }
+});
+
 app.post("/api/v1/signup", async (c) => {
   const prisma = new PrismaClient({
     datasourceUrl: c.env.DATABASE_URL,
