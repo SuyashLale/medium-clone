@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client/edge";
 import { withAccelerate } from "@prisma/extension-accelerate";
+import { createBlogInput, updateBlogInput } from "@suyashlale/medium-common";
 import { Hono } from "hono";
 import { verify } from "hono/jwt";
 
@@ -32,7 +33,6 @@ blogRouter.use("/*", async (c, next) => {
     const response = await verify(header, c.env.JWT_SECRET);
     if (response) {
       // since we signed the token with "id"
-      console.log("🚀 ~ blogRouter.use ~ response_id:", response.id);
 
       // Set the user ID
       c.set("authorId", response.id);
@@ -53,11 +53,20 @@ blogRouter.use("/*", async (c, next) => {
   }
 });
 
+// Endpoint: Create Blog/Post
 blogRouter.post("/", async (c) => {
   try {
     // Parse Body
     const body = await c.req.json();
-    console.log("🚀 ~ blogRouter.post ~ body:", body);
+
+    // Request Body Validation
+    const { success } = createBlogInput.safeParse(body);
+    if (!success) {
+      c.status(411);
+      return c.json({
+        message: "Invalid inputs for creating a blog post",
+      });
+    }
 
     // Create prisma client so that DB coomms can be done
     const prisma = new PrismaClient({
@@ -84,10 +93,20 @@ blogRouter.post("/", async (c) => {
   }
 });
 
+// Endpoint: Update a blog/post
 blogRouter.put("/", async (c) => {
   try {
     // Parse the body
     const body = await c.req.json();
+
+    // Requat body validation
+    const { success } = updateBlogInput.safeParse(body);
+    if (!success) {
+      c.status(411);
+      return c.json({
+        message: "Invalid inputs for updating blog post",
+      });
+    }
 
     // Create the Prisma client
     const prisma = new PrismaClient({

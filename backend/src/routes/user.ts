@@ -2,6 +2,7 @@ import { PrismaClient } from "@prisma/client/edge";
 import { withAccelerate } from "@prisma/extension-accelerate";
 import { Hono } from "hono";
 import { sign } from "hono/jwt";
+import { signupInput } from "@suyashlale/medium-common";
 
 export const userRouter = new Hono<{
   Bindings: {
@@ -18,24 +19,22 @@ userRouter.post("/signup", async (c) => {
   // Get the body from the context.
   const body = await c.req.json();
 
-  try {
-    const dbLookup = await prisma.user.findFirst({
-      where: {
-        email: body.email,
-      },
+  // Safe Parse the request body
+  const { success } = signupInput.safeParse(body);
+
+  // Check if the input validation passed, else return error
+  if (!success) {
+    c.status(411);
+    return c.json({
+      message: "Input validation failed",
     });
+  }
 
-    if (dbLookup) {
-      c.status(411);
-      return c.json({
-        error: "Email already taken",
-      });
-    }
-
+  try {
     // Create the user record
     const user = await prisma.user.create({
       data: {
-        email: body.email,
+        email: body.username,
         password: body.password,
       },
     });
